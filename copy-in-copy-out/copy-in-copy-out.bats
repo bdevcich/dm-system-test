@@ -17,9 +17,6 @@ COPY_IN_SRC=/lus/global/testdir/src/
 # IN_FILE=job/data.out
 # IN_DIR=$(dirname $IN_FILE)
 
-# destination directory root (e.g. /lus/global/user)
-DEST_DIR=/lus/global/testdir/dest
-
 tests_file="copy-in-copy-out.json"
 num_tests=$(jq length $tests_file)
 
@@ -32,7 +29,7 @@ if [[ -v NUM_TESTS ]]; then
 fi
 
 # Read the test file and create a bats test for each entry
-for ((i = 0; i < $num_tests; i++)); do
+for ((i = 0; i < num_tests; i++)); do
     test_name=$(cat $tests_file | jq -r ".[$i].test")-$fs_type
     bats_test_function --description "copy-in-copy-out: $test_name" -- test_copy_in_copy_out "$i"
 done
@@ -64,7 +61,7 @@ function test_copy_in_copy_out() {
     fi
 
     # grab the output from ls
-    local ls_output=$(/bin/ls -l $expected)
+    local ls_output=$(/bin/ls -l "$expected")
     echo "$ls_output" # print it out in case of fail
 
     # if lustre, then no index mounts and only 1 file

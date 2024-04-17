@@ -1,9 +1,8 @@
-#!/usr/bin/env bash
-
+#!/bin/bash
 
 mkdir -p /lus/global/testdir/src/job/job2
 mkdir -p /lus/global/testdir/src/job2
-echo "hello_there" > /lus/global/testdir/src/job/data.out
+echo "hello_there" >/lus/global/testdir/src/job/data.out
 cp /lus/global/testdir/src/job/data.out /lus/global/testdir/src/job/data2.out
 cp /lus/global/testdir/src/job/data.out /lus/global/testdir/src/job/job2/data3.out
 cp /lus/global/testdir/src/job/data.out /lus/global/testdir/src/job2/data.out
@@ -19,4 +18,3 @@ chmod -R g-w /lus/global/testdir/src
 
 # make dest group writeable
 chmod -R g+w /lus/global/testdir/dest/
-
