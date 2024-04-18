@@ -78,7 +78,7 @@ function test_copy_in_copy_out() {
     fi
 
     # grab the output from ls
-    local ls_output=$(/bin/ls -l "$expected")
+    local ls_output=$(/bin/ls -l ${expected})
     echo "$ls_output" # print it out in case of fail
 
     # if lustre, then no index mounts and only 1 file
