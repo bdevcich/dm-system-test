@@ -13,9 +13,8 @@ N=4
 # the source files are created with `create-testfiles.sh`
 COPY_IN_SRC=/lus/global/testdir/src/
 
-# rather than use copy_in, source the files by running on the compute nodes (e.g. mkdir && fallocate)
-# IN_FILE=job/data.out
-# IN_DIR=$(dirname $IN_FILE)
+# destination directory root (e.g. /lus/global/user)
+DEST_DIR=/lus/global/testdir/dest
 
 tests_file="copy-in-copy-out.json"
 num_tests=$(jq length $tests_file)
@@ -28,10 +27,16 @@ if [[ -v NUM_TESTS ]]; then
     num_tests=$NUM_TESTS
 fi
 
+copy_out_method="out"
+if [[ -v COPY_OFFLOAD ]]; then
+	copy_out_method="offload"
+fi
+
+
 # Read the test file and create a bats test for each entry
 for ((i = 0; i < num_tests; i++)); do
     test_name=$(cat $tests_file | jq -r ".[$i].test")-$fs_type
-    bats_test_function --description "copy-in-copy-out: $test_name" -- test_copy_in_copy_out "$i"
+    bats_test_function --description "copy-in-copy-$copy_out_method: $test_name" -- test_copy_in_copy_out "$i"
 done
 
 function setup() {
@@ -48,12 +53,24 @@ function test_copy_in_copy_out() {
     local dest=$(cat $tests_file | jq -r ".[$idx].dest")
     local expected=$(cat $tests_file | jq -r ".[$idx].expected")
 
-    flux run -l -N${N} --wait-event=clean --setattr=dw="\
-        #DW jobdw type=$fs_type capacity=10GiB name=copyout-test \
-        #DW copy_in source=$COPY_IN_SRC destination=\$DW_JOB_copyout-test \
-        #DW copy_out source=$src destination=$dest profile=no-xattr" \
-        bash -c hostname
-    # bash -c "mkdir -p \$DW_JOB_copyout_test/$IN_DIR && fallocate -l100M \$DW_JOB_copyout_test/$IN_FILE"
+	# Use copy offload to do the copy_out (copy_in isn't supported)
+    if [[ "$copy_out_method" == "offload" ]]; then
+	    # replace the hyphen in src with underscore since it's being used on the compute node rather than in a directive
+	    echo "SOURCE: $src"
+	    src="${src//-/_}" 	
+	    echo "AFTER SOURCE: $src"
+		flux run -l -N${N} --wait-event=clean --setattr=dw="\
+			#DW jobdw type=$fs_type capacity=10GiB name=copyout-test \
+			#DW copy_in source=$COPY_IN_SRC destination=\$DW_JOB_copyout-test" \
+    		bash -c "hostname && \
+    				dm-client-go -source=$src -destination=$dest -profile=no-xattr -skip-delete"
+    else
+		flux run -l -N${N} --wait-event=clean --setattr=dw="\
+			#DW jobdw type=$fs_type capacity=10GiB name=copyout-test \
+			#DW copy_in source=$COPY_IN_SRC destination=\$DW_JOB_copyout-test \
+			#DW copy_out source=$src destination=$dest profile=no-xattr" \
+			bash -c "hostname"
+    fi
 
     # For lustre, remove the `/*` from expected since there are no index mounts
     if [[ "$fs_type" == "lustre" ]]; then
